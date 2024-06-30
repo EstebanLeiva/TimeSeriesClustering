@@ -4,6 +4,7 @@
 # 2. Define a distance function between two time series (MSM, DTW)
 # 3. Define a clustering algorithm over time series (K-medoids, K-prototypes)
 # 4. Cluster the time series data
+
 library(stats)
 library(dtw)
 library(cluster)
@@ -19,10 +20,11 @@ y6 <- x + 30
 y7 <- -x + 10
 y8 <- -x + 20
 y9 <- -x + 30
+y10 <- ifelse(x <= 50, x + 10, -x + 10)
 
 time_series <- data.frame(x = x, y1 = y1, y2 = y2, y3 = y3,
                           y4 = y4, y5 = y5, y6 = y6,
-                          y7 = y7, y8 = y8, y9 = y9)
+                          y7 = y7, y8 = y8, y9 = y9, y10 = y10)
 
 plot(x, y1, type = "l", col = "red")
 lines(x, y2, col = "blue")
@@ -33,6 +35,7 @@ lines(x, y6, col = "orange")
 lines(x, y7, col = "brown")
 lines(x, y8, col = "pink")
 lines(x, y9, col = "gray")
+lines(x, y10, col = "#ff005d")
 
 time_series <- t(time_series)
 time_series <- time_series[-1, ]
@@ -70,6 +73,8 @@ diss <- diss_matrix(time_series, indicator, 1, 50)
 cluster <- pam(diss, k = 3)
 clusters <- cluster$clustering
 
+clusters
+
 # Visualization
 plot(x, y1, type = "l", col = clusters[1])
 lines(x, y2, col = clusters[2])
@@ -80,3 +85,4 @@ lines(x, y6, col = clusters[6])
 lines(x, y7, col = clusters[7])
 lines(x, y8, col = clusters[8])
 lines(x, y9, col = clusters[9])
+lines(x, y10, col = clusters[10])
