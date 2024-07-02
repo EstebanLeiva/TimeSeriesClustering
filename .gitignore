@@ -50,3 +50,4 @@ rsconnect/
 
 # Python environment
 /venv
+/benchmarks/__pycache__/
