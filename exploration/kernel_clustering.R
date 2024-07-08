@@ -3,15 +3,12 @@ library(dtw)
 library(cluster)
 library(np)
 
-time_series <- read.csv("exploration/data/brownian_database.csv")
-
-smooth_series <- function(time_series) {
+smooth_series <- function(time_series, bw, kernel = "normal") {
   smooth_series <- time_series  
   for (col in names(time_series)[1:ncol(smooth_series)]) {
     X <- 1:nrow(time_series)
     Y <- time_series[[col]]
-    bw <- npregbw(formula = Y ~ X)
-    time_series[[col]] <- npreg(bws = bw)$mean
+    smooth_series[[col]] <- ksmooth(X, Y, kernel = kernel, bandwidth = bw, n.points = length(X))$y
   }
   return(smooth_series)
 }
@@ -41,22 +38,21 @@ diss_matrix <- function(data, distance) {
   return(diss)
 }
 
-kernel_clustering <- function(time_series, k, distance = "euclidean") {
-  smoothed_series <- smooth_series(time_series)
+kernel_clustering <- function(time_series, k, bw, kernel = "normal", distance = "euclidean") {
+  smoothed_series <- smooth_series(time_series, bw, kernel)
   diss <- diss_matrix(smoothed_series, distance)
   cluster <- pam(diss, k = k)
   return(cluster)
 }
 
-time_window <- function(time_series, k, window_length = NULL, change_points = NULL) {
+kernel_clustering_time_window <- function(time_series, k, bw, kernel = "normal", distance = "euclidean", window_length = NULL, change_points = NULL) {
   if (!is.null(window_length)){
     n <- nrow(time_series)
     boundaries <- seq(1, n, by = window_length)
     clusters <- c()
     for (i in 1:(length(boundaries) - 1)){
       window <- time_series[boundaries[i]:boundaries[i + 1], ]
-      smooth_window <- smooth_series(window)
-      cluster <- kernel_clustering(smooth_window, k)
+      cluster <- kernel_clustering(smooth_window, k, bw, kernel, distance)
       clusters <- c(clusters, cluster$clustering)
     }
     return(clusters)
@@ -64,8 +60,7 @@ time_window <- function(time_series, k, window_length = NULL, change_points = NU
     clusters <- c()
     for (i in 1:(length(change_points) - 1)){
       window <- time_series[change_points[i]:change_points[i + 1], ]
-      smooth_window <- smooth_series(window)
-      cluster <- kernel_clustering(smooth_window, k)
+      cluster <- kernel_clustering(smooth_window, k, bw, kernel, distance)
       clusters <- c(clusters, cluster$clustering)
     }
   } else {
@@ -74,6 +69,7 @@ time_window <- function(time_series, k, window_length = NULL, change_points = NU
 }
 
 ### Smoothing example ###
+time_series <- read.csv("exploration/data/brownian_database.csv")
 X <- 1:nrow(time_series)
 Y <- time_series[["BM_1"]]
 bw <- npregbw(formula = Y ~ X)
@@ -84,6 +80,17 @@ plot(time_series$BM_1, type = "l", col = "blue", main = "Brownian Motions", xlab
 lines(time.seq$X, reg.eval$mean, col = "red")
 lines(reg$mean,col="green")
 
+time_series <- read.csv("exploration/data/combined_brownian_database.csv")
+X <- 1:nrow(time_series)
+Y <- time_series[["BM_1"]]
+smoothed <- ksmooth(X, Y, kernel = "normal", bandwidth = 2, n.points = length(X))
+bw <- npregbw(formula = Y ~ X)
+reg <- npreg(bws = bw)
+time.seq <- data.frame(X=seq(0,100,by=0.01))
+reg.eval <- npreg(bws=bw, newdata=time.seq)
+plot(time_series$BM_1, type = "l", col = "blue", main = "Combined Brownian Motions", xlab = "Time", ylab = "Value")
+lines(X, smoothed$y, col = "red")
+lines(time.seq$X, reg.eval$mean, col = "red")
 
 ### Clustering example ###
 cluster <- kernel_ts_clustering(time_series, 3)
