@@ -13,6 +13,19 @@ smooth_series <- function(time_series, bw, kernel) {
   return(smooth_series)
 }
 
+weightted_distance <- function(ts1, ts2, weight) {
+  local_distance <- 0
+  for(i in seq_along(ts1)){
+    local_distance <- local_distance + weight[i] * (ts1[i] - ts2[i])^2
+  }
+}
+
+get_normal_weights <- function(n, center, sigma){
+  x <- seq(1, n)
+  weight <- dnorm(x, mean = center, sd = sigma)
+  return(weight)
+}
+
 distance_dtw <- function(ts1, ts2) {
   return(dtw(ts1, ts2, keep = FALSE, distance.only = TRUE, window.type = "itakura")$distance)
 }
@@ -83,15 +96,10 @@ lines(reg$mean,col="green")
 
 time_series <- read.csv("exploration/data/combined_brownian_database.csv")
 X <- 1:nrow(time_series)
-Y <- time_series[["BM_1"]]
-smoothed <- ksmooth(X, Y, kernel = "normal", bandwidth = 2, n.points = length(X))
-bw <- npregbw(formula = Y ~ X)
-reg <- npreg(bws = bw)
-time.seq <- data.frame(X=seq(0,100,by=0.01))
-reg.eval <- npreg(bws=bw, newdata=time.seq)
-plot(time_series$BM_1, type = "l", col = "blue", main = "Combined Brownian Motions", xlab = "Time", ylab = "Value")
+Y <- time_series[["BM_11"]]
+smoothed <- ksmooth(X, Y, kernel = "normal", bandwidth = 3, n.points = length(X))
+plot(time_series$BM_11, type = "l", col = "blue", main = "Combined Brownian Motions", xlab = "Time", ylab = "Value")
 lines(X, smoothed$y, col = "red")
-lines(time.seq$X, reg.eval$mean, col = "red")
 
 ### Clustering example ###
 time_series <- read.csv("exploration/data/combined_brownian_database.csv")
@@ -117,17 +125,18 @@ clusters[2, ]
 
 ### Plot Return Series ###
 return_series <- read.csv("exploration/data/browniancombined_returns.csv")
-smooth_returns <- smooth_series(return_series, 3, "normal")
-plot(return_series$BM_1, type = "l", xlab = "Time", ylab = "Daily Return", main = "Return Series")
-lines(smooth_returns$BM_1, col = "red")
+smooth_returns <- smooth_series(return_series, 2, "normal")
+plot(return_series$BM_21, type = "l", xlab = "Time", ylab = "Daily Return", main = "Return Series")
+lines(smooth_returns$BM_21, col = "red")
+abline(h = 0, lty = 2)
 
 ### Return Clustering ###
 return_series <- read.csv("exploration/data/browniancombined_returns.csv")
-cluster <- kernel_clustering(return_series, 3, 3, "normal", "dtw")
+cluster <- kernel_clustering(return_series, 3, 2, "normal", "dtw")
 clusters <- cluster$clustering
 clusters
 
-smooth_returns <- smooth_series(return_series, 3, "normal")
+smooth_returns <- smooth_series(return_series, 2, "normal")
 
 for (i in 1:3){
     plot(NULL, xlim = c(0, nrow(return_series)), ylim = c(-1, 1), xlab = "Time", ylab = "Daily Return", main = "Cluster")
@@ -147,4 +156,3 @@ for (i in 1:3){
     }
   }
 }
-

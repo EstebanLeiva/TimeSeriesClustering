@@ -7,21 +7,57 @@ brownian_motion <- function(n, mu, sigma) {
   return(path)
 }
 
-combine_brownian_motions <- function(n, mu1, sigma1, mu2, sigma2) {
-  if (n %% 2 != 0) {
-    stop("n must be an even number")
+combine_brownian_motions <- function(bm1, bm2) {
+  if (length(bm1) == 0) {
+    return(bm2)
+  } else {
+    bm2 <- bm2 + bm1[length(bm1)]
+    combined_bm <- c(bm1, bm2)
+    return(combined_bm)
   }
-  bm1 <- brownian_motion(n/2, mu1, sigma1)
-  bm2 <- brownian_motion(n/2, mu2, sigma2)
-  bm2 <- bm2 + bm1[n/2]
-  combined_bm <- c(bm1, bm2)
-  return(combined_bm)
 }
 
-generate_brownian_motions <- function(n, mus, sigmas, num_motions, output_file = NULL) {
-  bm_df <- data.frame(matrix(nrow = n, ncol = num_motions))
+generate_brownian_motions <- function(
+    n, dist_tuple,
+    num_per_class,
+    change_points,
+    output_file = NULL) {
+  num_motions <- length(dist_tuple) * num_per_class
+  dist_simulated <- c()
+  for (i in 1:length(dist_tuple)) {
+    for (j in 1:num_per_class) {
+      dist <- c()
+      for (k in 1:(length(change_points) + 1)) {
+        dist <- c(
+          dist,
+          c(runif(
+            1, dist_tuple[i][k][1] - 0.5,
+            dist_tuple[i][k][1] + 0.5
+          ), runif(
+            1, dist_tuple[i][k][2] - 0.1,
+            dist_tuple[i][k][2] + 0.1
+          ))
+        )
+      }
+      dist_simulated <- c(dist_simulated, dist)
+    }
+  }
+  print("pass")
+  bm_df <- data.frame(matrix(
+    nrow = n * (change_points + 1),
+    ncol = num_motions
+  ))
   for (i in 1:num_motions) {
-    bm_df[, i] <- brownian_motion(n, mus[i], sigmas[i])
+    bm <- c()
+    for (j in 1:(length(change_points) + 1)) {
+      bm2 <- brownian_motion(
+        n, dist_simulated[i][j][1],
+        dist_simulated[i][j][2]
+      )
+      bm <- combine_brownian_motions(bm, bm2)
+    }
+    print(bm)
+    bm_df[, i] <- bm
   }
   colnames(bm_df) <- paste0("BM_", 1:num_motions)
   if (!is.null(output_file)) {
@@ -30,15 +66,56 @@ generate_brownian_motions <- function(n, mus, sigmas, num_motions, output_file =
   return(bm_df)
 }
 
-generate_combined_brownian_motions <- function(n, mus1, sigmas1, mus2, sigmas2, num_motions, output_file = NULL) {
-  bm_df <- data.frame(matrix(nrow = n, ncol = num_motions))
-  for (i in 1:num_motions) {
-    bm_df[, i] <- combine_brownian_motions(n, mus1[i], sigmas1[i], mus2[i], sigmas2[i])
+generate_brownian_motions <- function(
+    n, dist_tuple,
+    num_per_class,
+    change_points,
+    output_file = NULL) {
+  num_motions <- length(dist_tuple) * num_per_class
+  dist_simulated <- list()
+
+  for (i in 1:length(dist_tuple)) {
+    for (j in 1:num_per_class) {
+      dist <- list()
+      for (k in 1:(change_points + 1)) {
+        dist[[k]] <- c(
+          runif(
+            1, dist_tuple[[i]][[k]][[1]] - 0.5,
+            dist_tuple[[i]][[k]][[1]] + 0.5
+          ),
+          runif(
+            1, dist_tuple[[i]][[k]][[2]] - 0.1,
+            dist_tuple[[i]][[k]][[2]] + 0.1
+          )
+        )
+      }
+      dist_simulated <- c(dist_simulated, list(dist))
+    }
   }
+
+  bm_df <- data.frame(matrix(
+    nrow = n * (change_points + 1),
+    ncol = num_motions
+  ))
+
+  for (i in 1:num_motions) {
+    bm <- c()
+    for (j in 1:(change_points + 1)) {
+      bm2 <- brownian_motion(
+        n, dist_simulated[[i]][[j]][[1]],
+        dist_simulated[[i]][[j]][[2]]
+      )
+      bm <- combine_brownian_motions(bm, bm2)
+    }
+    bm_df[, i] <- bm
+  }
+
   colnames(bm_df) <- paste0("BM_", 1:num_motions)
+
   if (!is.null(output_file)) {
     write.csv(bm_df, file = output_file, row.names = FALSE)
   }
+
   return(bm_df)
 }
 
@@ -54,36 +131,20 @@ generate_daily_returns <- function(brownian_df, output_file = NULL) {
   return(daily_returns_df)
 }
 
-### PLOTS ###
-#plot combined brownian motion
-bm_combined <- combine_brownian_motions(100, 2, 0.5, -1, 0.5)
-plot(bm_combined, type = "l", col = "blue", main = "Combined Brownian Motion", xlab = "Time", ylab = "Value")
+### Generate brownian motions ###
+n <- 10
+dist_tuple <- list(
+  list(c(1, 0.5), c(3, 0.5), c(2, 0.1)),
+  list(c(4, 0.5), c(5, 0.5), c(-1, 0.1)),
+  list(c(-1, 0.5), c(3, 0.5), c(0.5, 0.1))
+)
+num_per_class <- 3
+change_points <- 2
+bm_df <- generate_brownian_motions(
+  n, dist_tuple, num_per_class, change_points, "brownian_database.csv"
+)
 
-#plot normal brownian motion
-bm_path <- brownian_motion(100, 2, 0.5)
-plot(bm_path, type = "l", col = "blue", main = "Brownian Motion", xlab = "Time", ylab = "Value")
+plot(bm_df$BM_8, type = "l", col = "blue", main = "Brownian Motions", xlab = "Time", ylab = "Value")
 
-### GENERATION OF DATASET ###
-
-# Brownian Motions
-mus <- c(runif(10, 1.5, 2), runif(10, 4, 5), runif(10, -2, -1))
-sigmas <- c(runif(10, 0.5, 1.5), runif(10, 0.5, 1.5), runif(10, 0.5, 1.5))
-
-bm_df <- generate_brownian_motions(30, mus, sigmas, 30, "brownian_database.csv")
-
-plot(bm_df$BM_1, type = "l", col = "blue", main = "Brownian Motions", xlab = "Time", ylab = "Value")
-
-# Combined Brownian Motions
-mus1 <- c(runif(10, 1.5, 2), runif(10, 4, 5), runif(10, -2, -1))
-sigmas1 <- c(runif(10, 0.5, 1), runif(10, 0.5, 1), runif(10, 0.5, 1))
-mus2 <- c(runif(10, -1, -0.5), runif(10, 0.25, 0.5), runif(10, 0, 1))
-sigmas2 <- c(runif(10, 0.5, 1), runif(10, 0.5, 1), runif(10, 0.5, 1))
-
-bm_combined_df <- generate_combined_brownian_motions(30, mus1, sigmas1, mus2, sigmas2, 30, "combined_brownian_database.csv")
-
-plot(bm_combined_df$BM_24, type = "l", col = "blue", main = "Combined Brownian Motions", xlab = "Time", ylab = "Value")
-
-# Daily Returns
-bm_returns <- generate_daily_returns(bm_combined_df, "browniancombined_returns.csv")
-
-plot(bm_returns$BM_22, type = "l", col = "blue", main = "Daily Returns", xlab = "Time", ylab = "Value")
+### Generate daily returns ###
+bm_returns <- generate_daily_returns(bm_df, "brownian_returns.csv")
