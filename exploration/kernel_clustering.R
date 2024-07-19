@@ -177,7 +177,7 @@ for (i in 1:3) {
 ### Returns time windows example ###
 time_series <- read.csv("exploration/data/brownian_returns.csv")
 window_length <- 20
-k <- 2
+k <- 3
 bw <- 2
 clusters <- kernel_clustering_time_window(
   time_series, k, bw,
@@ -195,3 +195,6 @@ for (i in 1:3) {
   }
   abline(h = 0, col = "black")
 }
+
+# apply the recent kernel
+# epanechnikov kernel

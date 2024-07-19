@@ -47,7 +47,3 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
-
-# Python environment
-/venv
-/benchmarks/__pycache__/
